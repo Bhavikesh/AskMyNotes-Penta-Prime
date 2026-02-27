@@ -144,7 +144,7 @@ class VectorStore:
         # This handles the case where the index was wiped but metadata still exists.
         logger.info("Using Supabase text-only fallback — re-upload PDFs to restore vectors.")
         fallback = [
-            (_row_to_chunk(row, subject_id), 0.5)
+            (_row_to_chunk(row, subject_id), 0.7)
             for row in supabase_chunks[:top_k]
             if row.get("text")
         ]

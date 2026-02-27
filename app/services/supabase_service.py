@@ -256,10 +256,15 @@ class SupabaseService:
     def get_analytics(self, user_id: str) -> Dict:
         """
         Returns raw data for analytics endpoint.
-        Aggregates per subject from queries + performance_metrics + study_sessions.
+        Aggregates per subject from queries + study_sessions.
         """
-        # All subjects for user
+        from collections import defaultdict
+
         subjects = self.get_subjects(user_id)
+
+        grand_total_questions = 0
+        grand_total_tests = 0
+        grand_total_minutes = 0.0
 
         subject_stats = []
         for subj in subjects:
@@ -277,34 +282,58 @@ class SupabaseService:
             queries = q_result.data or []
             questions_attempted = len(queries)
 
-            # Map confidence labels to scores
             conf_map = {"High": 1.0, "Medium": 0.6, "Low": 0.3, "Not Found": 0.0}
             conf_scores = [conf_map.get(q.get("confidence", "Low"), 0.3) for q in queries]
             avg_confidence = (sum(conf_scores) / len(conf_scores)) if conf_scores else 0.0
 
-            # Study session accuracy
+            # Study session data (test performance)
             sess_result = (
                 self.client.table("study_sessions")
-                .select("score, total_questions")
+                .select("score, total_questions, created_at")
                 .eq("user_id", user_id)
                 .eq("subject_id", sid)
+                .order("created_at", desc=True)
                 .execute()
             )
             sessions = sess_result.data or []
+            tests_taken = len(sessions)
             total_correct = sum(s.get("score", 0) for s in sessions)
-            total_q = sum(s.get("total_questions", 0) for s in sessions)
-            accuracy = (total_correct / total_q * 100) if total_q > 0 else 0.0
+            total_q_tested = sum(s.get("total_questions", 0) for s in sessions)
+            accuracy = (total_correct / total_q_tested * 100) if total_q_tested > 0 else 0.0
 
-            subject_stats.append(
-                {
-                    "subject": sname,
-                    "accuracy": round(accuracy, 2),
-                    "questions_attempted": questions_attempted,
-                    "average_confidence": round(avg_confidence, 3),
-                }
-            )
+            best_score = 0.0
+            latest_score = 0.0
+            if sessions:
+                latest_s = sessions[0]
+                latest_total = latest_s.get("total_questions", 1) or 1
+                latest_score = round(latest_s.get("score", 0) / latest_total * 100, 1)
+                scores_pct = [
+                    round(s.get("score", 0) / max(s.get("total_questions", 1), 1) * 100, 1)
+                    for s in sessions
+                ]
+                best_score = max(scores_pct) if scores_pct else 0.0
 
-        # Timeline: daily query count from queries table (last 30 days)
+            # Estimate study minutes: ~2 min per query, ~5 min per test
+            study_minutes = round(questions_attempted * 2 + tests_taken * 5, 1)
+
+            grand_total_questions += questions_attempted
+            grand_total_tests += tests_taken
+            grand_total_minutes += study_minutes
+
+            subject_stats.append({
+                "subject": sname,
+                "accuracy": round(accuracy, 2),
+                "questions_attempted": questions_attempted,
+                "average_confidence": round(avg_confidence, 3),
+                "tests_taken": tests_taken,
+                "best_score": best_score,
+                "latest_score": latest_score,
+                "total_correct": total_correct,
+                "total_questions_tested": total_q_tested,
+                "study_minutes": study_minutes,
+            })
+
+        # Timeline
         timeline_result = (
             self.client.table("queries")
             .select("created_at, confidence")
@@ -314,20 +343,21 @@ class SupabaseService:
         )
         timeline_raw = timeline_result.data or []
 
-        # Group by date
-        from collections import defaultdict
         daily: Dict[str, List[float]] = defaultdict(list)
         conf_map = {"High": 1.0, "Medium": 0.6, "Low": 0.3, "Not Found": 0.0}
         for row in timeline_raw:
-            day = row["created_at"][:10]  # YYYY-MM-DD
+            day = row["created_at"][:10]
             daily[day].append(conf_map.get(row.get("confidence", "Low"), 0.3))
 
         timeline = [
-            {
-                "date": day,
-                "accuracy": round(sum(scores) / len(scores) * 100, 2),
-            }
+            {"date": day, "accuracy": round(sum(scores) / len(scores) * 100, 2)}
             for day, scores in sorted(daily.items())
         ]
 
-        return {"subjects": subject_stats, "timeline": timeline}
+        return {
+            "subjects": subject_stats,
+            "timeline": timeline,
+            "total_study_minutes": round(grand_total_minutes, 1),
+            "total_questions_asked": grand_total_questions,
+            "total_tests_taken": grand_total_tests,
+        }

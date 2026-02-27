@@ -30,6 +30,12 @@ class AnalyticsService:
                 accuracy=s["accuracy"],
                 questions_attempted=s["questions_attempted"],
                 average_confidence=s["average_confidence"],
+                tests_taken=s.get("tests_taken", 0),
+                best_score=s.get("best_score", 0),
+                latest_score=s.get("latest_score", 0),
+                total_correct=s.get("total_correct", 0),
+                total_questions_tested=s.get("total_questions_tested", 0),
+                study_minutes=s.get("study_minutes", 0),
             )
             for s in raw.get("subjects", [])
         ]
@@ -39,4 +45,10 @@ class AnalyticsService:
             for t in raw.get("timeline", [])
         ]
 
-        return AnalyticsResponse(subjects=subjects, timeline=timeline)
+        return AnalyticsResponse(
+            subjects=subjects,
+            timeline=timeline,
+            total_study_minutes=raw.get("total_study_minutes", 0),
+            total_questions_asked=raw.get("total_questions_asked", 0),
+            total_tests_taken=raw.get("total_tests_taken", 0),
+        )

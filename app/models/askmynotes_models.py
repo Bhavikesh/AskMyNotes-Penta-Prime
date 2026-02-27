@@ -93,9 +93,15 @@ class StudyModeResponse(BaseModel):
 
 class SubjectAnalytics(BaseModel):
     subject: str
-    accuracy: float = Field(..., description="Accuracy percentage (0-100)")
-    questions_attempted: int
-    average_confidence: float = Field(..., description="Average confidence score 0-1")
+    accuracy: float = Field(0, description="Test accuracy percentage (0-100)")
+    questions_attempted: int = 0
+    average_confidence: float = Field(0, description="Average confidence score 0-1")
+    tests_taken: int = 0
+    best_score: float = 0
+    latest_score: float = 0
+    total_correct: int = 0
+    total_questions_tested: int = 0
+    study_minutes: float = 0
 
 
 class TimelinePoint(BaseModel):
@@ -106,6 +112,9 @@ class TimelinePoint(BaseModel):
 class AnalyticsResponse(BaseModel):
     subjects: List[SubjectAnalytics]
     timeline: List[TimelinePoint]
+    total_study_minutes: float = 0
+    total_questions_asked: int = 0
+    total_tests_taken: int = 0
 
 
 # ── SAQ Evaluation ───────────────────────────────────────────────────────────

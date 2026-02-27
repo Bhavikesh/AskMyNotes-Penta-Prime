@@ -311,9 +311,9 @@ class RAGService:
 
     @staticmethod
     def _score_to_confidence(score: float) -> str:
-        if score > 0.8:
+        if score > 0.65:
             return "High"
-        elif score > 0.6:
+        elif score > 0.4:
             return "Medium"
         else:
             return "Low"

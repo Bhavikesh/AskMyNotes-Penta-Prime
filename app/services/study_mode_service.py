@@ -161,9 +161,6 @@ Output STRICT JSON in this exact format (no markdown, no extra text):
             except Exception as e:
                 logger.warning(f"Skipping malformed SAQ {i}: {e}")
 
-        # 5. Log study session (score unknown at generation time; 0 until graded)
-        total_q = len(mcqs) + len(saqs)
-        self.db.log_study_session(user_id, subject_id, score=0, total_questions=total_q)
 
         return StudyModeResponse(
             subject=subject_name, mcqs=mcqs, short_answers=saqs

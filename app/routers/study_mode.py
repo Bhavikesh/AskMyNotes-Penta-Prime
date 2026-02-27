@@ -116,4 +116,15 @@ async def evaluate_answers(payload: SAQEvaluationRequest):
         ))
 
     total = sum(r.score for r in results)
+    
+    # Log the actual test score to study_sessions for analytics
+    from app.services.supabase_service import SupabaseService
+    db = SupabaseService()
+    db.log_study_session(
+        user_id=str(payload.user_id),
+        subject_id=str(payload.subject_id),
+        score=int(total),
+        total_questions=len(results),
+    )
+    
     return SAQEvaluationResponse(results=results, total_score=total, max_score=len(results))

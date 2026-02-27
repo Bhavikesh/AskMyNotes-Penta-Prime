@@ -96,6 +96,7 @@ export default function VoicePage() {
     const autoListenRef = useRef(true);
     const ttsModeRef = useRef('server');
     const synthRef = useRef(window.speechSynthesis);
+    const sendQuestionRef = useRef(null);
 
     useEffect(() => { autoListenRef.current = autoListen; }, [autoListen]);
     useEffect(() => { ttsModeRef.current = ttsMode; }, [ttsMode]);
@@ -117,7 +118,7 @@ export default function VoicePage() {
             setIsListening(false);
             setStatus('');
             if (transcript.trim()) {
-                setTimeout(() => sendQuestion(transcript.trim()), 300);
+                setTimeout(() => sendQuestionRef.current?.(transcript.trim()), 300);
             }
         };
         recognition.onerror = () => { setIsListening(false); setStatus(''); };
@@ -283,6 +284,9 @@ export default function VoicePage() {
             }]);
         }
     }, [loading, selectedSubject, sessionId, playAudioBlob, browserTTS, afterSpeak]);
+
+    // Keep ref in sync so speech recognition callback always uses latest version
+    useEffect(() => { sendQuestionRef.current = sendQuestion; }, [sendQuestion]);
 
     // ── Replay a message ───────────────────────────────────────────────────────
     const replayMessage = useCallback((msg) => {
