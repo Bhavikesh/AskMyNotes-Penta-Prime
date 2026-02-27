@@ -12,7 +12,9 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir "numpy<2" && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir edge-tts python-dotenv
 
 # Pre-download embedding model to reduce cold start time
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-mpnet-base-v2')"
